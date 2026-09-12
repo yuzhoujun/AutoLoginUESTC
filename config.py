@@ -38,8 +38,10 @@ def load_config(path=CONFIG_FILE):
         'ac_id': str(portal['ac_id']),  # 校验和要按字符串拼接，而 toml 里写的是数字
         'domain': account.get('domain', '@dx'),
 
-        # 下面的一般不用改
-        'test_ip': monitor.get('test_ip', '114.114.114.114'),
+        # 下面的一般不用改。
+        # test_ip 必须真的响应 ICMP：114.114.114.114 在电子科大宿舍网 100% 丢包，
+        # 用它会让程序一直误判断网。223.5.5.5(阿里 DNS) 实测可达。
+        'test_ip': monitor.get('test_ip', '223.5.5.5'),
         'delay': monitor.get('delay', 16),
         'max_failed': monitor.get('max_failed', 3),
     }

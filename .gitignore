@@ -7,6 +7,11 @@ logs/*.log
 # 两个都列上，避免切换分支时其中一个漏网被提交。
 config.toml
 config.ini
+
+# manage.py 记录的本机 python 解释器路径，因机器而异
+python-path.txt
+# WinSW 生成的服务配置，含本机绝对路径
+UESTC-AutoLogin.xml
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

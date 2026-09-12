@@ -1,0 +1,2 @@
+# .bat 必须保持 CRLF：cmd.exe 对 LF 行尾的批处理文件容错不佳
+*.bat text eol=crlf

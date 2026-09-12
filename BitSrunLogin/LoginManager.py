@@ -1,7 +1,4 @@
-import base64
-
 import requests
-# import time
 import re
 
 from ._decorators import *
@@ -30,22 +27,16 @@ class LoginManager:
 
     各步骤的细节由对应的 _ 前缀私有方法完成。构造函数的 kwargs 会被合并进
     self.args，因此 url / ac_id / domain 等参数都可以从外部覆盖（见 config.py）。
+
+    下面 self.args 里的 url / ac_id / domain 是上游作者所在学校的取值，仅作
+    兜底默认值；本项目一律由 config.py 从 config.toml 传入，不会用到它们。
     """
-
-    @staticmethod
-    def encode(s):
-        return base64.b64encode(s.encode()).decode()
-
-    @staticmethod
-    def decode(s):
-        return base64.b64decode(s).decode()
 
     def __init__(self, **kwargs):
         # urls
         self.args = {
             # urls
             'url': 'http://10.253.0.235',  # 主楼 http://10.253.0.237 , 寝室公寓http://10.253.0.235
-            # 'url': kwargs.get('url', 'http://10.253.0.235')
             'url_login_page': "/",
             'url_get_challenge_api': "/cgi-bin/get_challenge",
             'url_login_api': "/cgi-bin/srun_portal",
@@ -69,19 +60,21 @@ class LoginManager:
         self.args['url_login_page'] = self.args['url'] + self.args['url_login_page']
         self.args['url_get_challenge_api'] = self.args['url'] + self.args['url_get_challenge_api']
         self.args['url_login_api'] = self.args['url'] + self.args['url_login_api']
-        # for k, v in self.args.items():
-        #     self.__setattr__(k, v)
 
-    def login(self, username, password, decode=False):
-        if decode:
-            username = LoginManager.decode(username)
-            password = LoginManager.decode(password)
+    def login(self, username, password):
+        """
+        执行一次完整登录，返回认证服务器返回的 error 字段（'ok' 即成功）。
+
+        返回值由 _resolve_login_responce 解析而来，供调用方判断本次登录结果，
+        例如 always_online.py 会把它写进日志。
+        """
         self.username = str(username) + self.args['domain']
         self.password = str(password)
 
         self.get_ip()
         self.get_token()
         self.get_login_responce()
+        return self._login_result
 
     def get_ip(self):
         print("Step1: Get local ip returned from srun server.")
@@ -273,7 +266,3 @@ class LoginManager:
     def _resolve_login_responce(self):
         self._login_result = re.search('"error":"(.*?)"', self._login_responce.text).group(1)
         print(self._login_responce.text)
-
-
-if __name__ == '__mian__':
-    m = LoginManager()

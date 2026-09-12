@@ -25,14 +25,6 @@ XXTEA 是分组加密算法，以 32 位无符号整数为单位运算。原实�
 import math
 
 
-def force(msg):
-    """把字符串逐字符转成字节序列。登录流程中未使用，保留以兼容原有导入。"""
-    ret = []
-    for w in msg:
-        ret.append(ord(w))
-    return bytes(ret)
-
-
 def ordat(msg, idx):
     """取 msg[idx] 的字符编码；越界时返回 0（相当于按 0 填充）。"""
     if len(msg) > idx:
@@ -128,9 +120,15 @@ def get_xencode(msg, key):
 
 
 if __name__ == '__main__':
-    # 自测：用固定输入验证加密结果。期望的密文再做 get_base64 后应得到
-    # ifmkGB9Vnhs0FHCIQZnATcecSSGyJulOcgodsvw3yrlMkXHH8K89aWgIPjkKlk8FH5TISo3NLpkQa7SaK0dkiodLIWXbUB8bMTf99+lOCH0jD5XuXVWTuvuQEyaBOxY0
+    # 自测：用固定输入验证加密结果。get_xencode 返回的是字符串（lencode 用 chr()
+    # 逐字节拼出来的），所以取字节值要过一道 ord()。
+    # 完整的加密自检（含 base64 / HMAC-MD5 / SHA1）见项目根目录的 selftest.py。
     _key = "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
     _msg = '{"username":"1234567890@dx","password":"pw","ip":"10.0.0.1","acid":"3","enc_ver":"srun_bx1"}'
-    str1 = get_xencode(_msg, _key)
-    print(type(str1))
+    _out = get_xencode(_msg, _key)
+    _head = [ord(c) for c in _out[:12]]
+    print('length =', len(_out))
+    print('head   =', _head)
+    assert len(_out) == 96, f'期望长度 96，实际 {len(_out)}'
+    assert _head == [22, 212, 163, 47, 163, 1, 117, 23, 205, 77, 65, 182], '首字节不匹配'
+    print('OK')
