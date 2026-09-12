@@ -20,10 +20,21 @@
 ### 如何选择
 
 - **Windows 环境、希望尽快部署** → 使用 `powershell` 分支。无需安装 Python 或任何
-  第三方组件，双击批处理文件即可运行，并可直接注册为开机自启的计划任务或服务。
+  第三方组件，双击批处理文件即可运行。
 - **需要跨平台，或使用 Linux / macOS / 路由器** → 使用 `python` 分支。
 - **需要阅读或修改协议实现** → 两个分支均可。`python` 分支将加密算法与登录流程分
   目录组织，结构更便于对照；`powershell` 分支为同一协议的独立实现。
+
+两个分支**都支持注册为开机自启的后台进程**，均提供计划任务与 Windows 服务两种
+方式，并且都以计划任务为推荐方案（零依赖）：
+
+| 分支 | 计划任务 | Windows 服务 | 管理入口 |
+| --- | --- | --- | --- |
+| `python` | `python manage.py install` | `python manage.py install-service` | `autoConnectNetwork.bat` 菜单 |
+| `powershell` | `.\install-task.ps1` | `.\install-service.ps1` | `autoConnectNetwork.bat` |
+
+两个分支的常驻脚本均为**前台进程**，关闭终端窗口即结束，因此只适合测试；长期无人
+值守需要执行上面的注册命令。
 
 ### 实测环境
 
@@ -46,15 +57,18 @@
 
 ### `python` 分支
 
-该分支的认证实现（`BitSrunLogin/` 目录）**复制自上述参考仓库**，并在此基础上做了
-修改与优化，主要包括：
+该分支的认证实现（`BitSrunLogin/` 目录）与常驻脚本（`always_online.py`）**来源于上述
+参考仓库**，并在此基础上做了修改与扩展，主要包括：
 
 - 修复本机 IP 的解析逻辑：新版认证页将 IP 置于 JavaScript 的 `var CONFIG = {...}`
   中，且登录页可能只是 `<meta http-equiv="refresh">` 跳转页，原实现在此情形下会
   抛出 `AttributeError: 'NoneType' object has no attribute 'group'`。
 - 重写配置加载方式：由代码内硬编码配置改为读取独立的 `config.toml`，个人凭据不再
   进入仓库。
-- 其余文件（`logger.py`、`autoConnectNetwork.bat`、配置文件模板等）为本项目新增。
+- 重写常驻脚本：接入 `config.toml` 与日志模块，增加连续失败判定与探测间隔节流，
+  `ping` 参数按操作系统选择（参考实现固定使用 Linux 语法的 `-c`）。
+- 其余文件（`logger.py`、`config.py`、`manage.py`、`selftest.py`、
+  `autoConnectNetwork.bat`、配置文件模板等）为本项目新增。
 
 因包含参考仓库的代码，该分支**保留了上游作者的版权声明**，详见「六、声明」。
 
@@ -101,11 +115,21 @@ cp config.example.toml config.toml
 编辑 `config.toml` 填写学号与密码，然后执行：
 
 ```bash
+python selftest.py       # 加密实现自检（不联网）
 python login_once.py     # 登录一次，验证配置
-python always_online.py  # 常驻运行，掉线自动重连
+python always_online.py  # 前台常驻运行，掉线自动重连（关掉终端即停）
 ```
 
-完整说明见 [`python` 分支的 README](../../tree/python#readme)。
+确认无误后注册开机自启（需管理员权限）：
+
+```bash
+python manage.py install   # 注册计划任务
+python manage.py status    # 查看状态
+python manage.py uninstall # 注销
+```
+
+也可以直接双击 `autoConnectNetwork.bat`，通过交互菜单完成上述操作。完整说明见
+[`python` 分支的 README](../../tree/python#readme)。
 
 > 直接切换分支亦可：`git clone` 后执行 `git checkout python`（或 `powershell`）与
 > `git clone -b <分支>` 等价。两个分支的代码与配置文件互不影响，可分别检出。
