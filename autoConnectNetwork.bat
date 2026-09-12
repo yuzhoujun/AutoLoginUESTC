@@ -1,19 +1,24 @@
 @echo off
 rem ============================================================
-rem  一键登录校园网 (双击运行)
+rem  UESTC campus network auto login -- double click to run.
 rem
-rem  想让电脑一直在线、掉线自动重连，把下面的 login_once.py
-rem  换成 always_online.py 即可。
+rem  Pure PowerShell, no Python required.
+rem  Default: log in once and exit.
+rem  For a long-running daemon that reconnects when the link
+rem  drops, change -Once below to -Daemon.
+rem
+rem  NOTE: this file is ASCII on purpose. Chinese comments in a
+rem  .bat break cmd.exe parsing on a GBK console, so the
+rem  Chinese documentation lives in README.md instead.
 rem ============================================================
 cd /d "%~dp0"
 
-rem 如果双击时报 "python 不是内部或外部命令"，说明 python 不在 PATH 里，
-rem 把下面这行的 rem 去掉，改成你自己 python.exe 的绝对路径：
-rem set "PYTHON=D:\APP-D\anaconda3\python.exe"
-if not defined PYTHON if defined CONDA_PREFIX set "PYTHON=%CONDA_PREFIX%\python.exe"
-if not defined PYTHON set "PYTHON=python"
+set "PS=powershell.exe"
+rem If PowerShell is not found, or you want to pin the 64-bit
+rem one explicitly, uncomment the next line:
+rem set "PS=%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe"
 
-"%PYTHON%" "%~dp0login_once.py"
+"%PS%" -NoProfile -ExecutionPolicy Bypass -File "%~dp0uestc-login.ps1" -Once
 
 echo.
 echo Exit code: %ERRORLEVEL%

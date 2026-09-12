@@ -4,6 +4,7 @@ logs/*.log
 
 # 个人配置(里面是学号和密码)，不要提交
 config.toml
+config.ini
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
