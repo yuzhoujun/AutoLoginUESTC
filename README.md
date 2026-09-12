@@ -3,10 +3,11 @@
 自动登录校园网 / 寝室宽带，掉线自动重连。**不需要装 Python**，Windows 自带的
 PowerShell 就能跑。配置只写一个 `config.ini`，不用碰代码。
 
-> 这个分支是 **PowerShell 原生实现**，`main` 分支保留原来的 Python 版本。
+> 这个分支是 **PowerShell 原生实现**，Python 版在 [`python` 分支](../../tree/python)，
+> 项目总说明和两个版本的对比在 [`main` 分支](../../tree/main)。
 > 两个版本功能等价、可以互换，按喜好挑一个用。
 
-------------------------------
+---
 
 ## 搞这干啥？
 
@@ -20,7 +21,7 @@ PowerShell 就能跑。配置只写一个 `config.ini`，不用碰代码。
 - 移动、电信寝室宽带有线接入 + 学号认证（硕丰 6、7、8 组团那种插网线直接弹出认证页面的，至今可用）
 ```
 
-------------------------------
+---
 
 ## 快速开始
 
@@ -80,16 +81,16 @@ powershell -ExecutionPolicy Bypass -File .\uestc-login.ps1 -Daemon
 
 想开机就自动跑、平时完全不用管，看下面「开机自启」一节（推荐注册成计划任务）。
 
-------------------------------
+---
 
 ## 运行模式
 
-| 参数 | 作用 |
-| --- | --- |
-| `-Once` | 登录一次就退出，用来验证配置（默认） |
-| `-Daemon` | 常驻，掉线自动重连 |
-| `-SelfTest` | 跑加密自检，校验移植是否和 Python 参考实现逐字节一致 |
-| `-ConfigPath <路径>` | 用指定的配置文件，默认脚本同目录的 `config.ini` |
+| 参数                   | 作用                                                 |
+| ---------------------- | ---------------------------------------------------- |
+| `-Once`              | 登录一次就退出，用来验证配置（默认）                 |
+| `-Daemon`            | 常驻，掉线自动重连                                   |
+| `-SelfTest`          | 跑加密自检，校验移植是否和 Python 参考实现逐字节一致 |
+| `-ConfigPath <路径>` | 用指定的配置文件，默认脚本同目录的`config.ini`     |
 
 `-SelfTest` 用的黄金向量是从 Python 参考实现里实测采集的，包括自定义字母表
 Base64、HMAC-MD5、SHA1 和 XXTEA（srun 的 `xencode`）。这些加密步骤必须逐字节
@@ -109,20 +110,20 @@ XEncode (XXTEA):
 全部通过，加密移植与 Python 参考实现逐字节一致。
 ```
 
-------------------------------
+---
 
 ## 配置项说明
 
-| 字段 | 说明 |
-| --- | --- |
-| `account.username` | 学号 |
-| `account.password` | 教务处密码 |
-| `account.domain` | 网络提供商：电信 `@dx`、移动 `@cmcc`、校园网 `@dx-uestc` |
-| `portal.url` | 认证页地址：寝室公寓 `http://10.253.0.235`，主楼有线校园网 `http://10.253.0.237` |
-| `portal.ac_id` | 认证页地址里的 `ac_id` 参数：寝室公寓 `3`，主楼有线 `1` |
-| `monitor.test_ip` | 用来判断当前是否联网的 IP，**ping 得通**才算在线 |
-| `monitor.delay` | 掉线检测间隔（秒），默认 16 |
-| `monitor.max_failed` | 连续 ping 失败多少次才认为断网，默认 3 |
+| 字段                   | 说明                                                                                |
+| ---------------------- | ----------------------------------------------------------------------------------- |
+| `account.username`   | 学号                                                                                |
+| `account.password`   | 教务处密码                                                                          |
+| `account.domain`     | 网络提供商：电信`@dx`、移动 `@cmcc`、校园网 `@dx-uestc`                       |
+| `portal.url`         | 认证页地址：寝室公寓`http://10.253.0.235`，主楼有线校园网 `http://10.253.0.237` |
+| `portal.ac_id`       | 认证页地址里的`ac_id` 参数：寝室公寓 `3`，主楼有线 `1`                        |
+| `monitor.test_ip`    | 用来判断当前是否联网的 IP，**ping 得通**才算在线                              |
+| `monitor.delay`      | 掉线检测间隔（秒），默认 16                                                         |
+| `monitor.max_failed` | 连续 ping 失败多少次才认为断网，默认 3                                              |
 
 `url` 和 `ac_id` 怎么确认？把 `url` 粘进浏览器，认证页地址栏里长得像
 `http://10.253.0.235/srun_portal_pc?ac_id=3&theme=pro`，那个 `ac_id` 就是。
@@ -142,7 +143,7 @@ ping -n 3 223.5.5.5
 
 看到 `Lost = 0 (0% loss)` 才能拿来当探测点。
 
-------------------------------
+---
 
 ## 双击运行
 
@@ -160,7 +161,7 @@ ping -n 3 223.5.5.5
 rem set "PS=%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe"
 ```
 
-------------------------------
+---
 
 ## 开机自启
 
@@ -212,7 +213,7 @@ rem set "PS=%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe"
 > 计划任务在**睡眠 / 休眠期间不执行**。要真正做到 7×24 在线，得在
 > 「电源选项」里把机器设成不睡眠，或者在任务属性里勾上「唤醒计算机运行此任务」。
 
-------------------------------
+---
 
 ## 目录结构
 
@@ -228,7 +229,7 @@ AutoLoginUESTC/
 └── logs/                 # 日志
 ```
 
-------------------------------
+---
 
 ## 常见问题
 
@@ -255,12 +256,12 @@ AutoLoginUESTC/
 改完保存时**必须存成「UTF-8 带 BOM」**。PowerShell 5.1 读不带 BOM 的 `.ps1`
 会按 ANSI 解码，文件里的中文注释就会乱掉，甚至报语法错误。
 
-------------------------------
+---
 
 ### 抄的！抄的！抄的！
 
 - 楼主入学的时候深澜软件的网络认证页面已经经过混淆了，还好 GitHub 有大佬之前写好的登录流程相关代码，
-  所以就完全照着抄了这个 <https://github.com/coffeehat/BIT-srun-login-script>
+  所以就完全照着抄了这个 [https://github.com/coffeehat/BIT-srun-login-script](https://github.com/coffeehat/BIT-srun-login-script)
 - 好多学校都是这套登录逻辑，所以 GitHub 脚本很多，上边这个链接里也有支持 OpenWrt 的 go 版本。
-- 这个分支是把上面那套 Python 实现（`main` 分支）原样移植成 PowerShell，加密部分用
-  Python 版采集的黄金向量做了逐字节校验 —— 协议是抄的，移植是自己写的。
+- 这个分支是把上面那套 Python 实现（[`python` 分支](../../tree/python)）原样移植成 PowerShell，
+  加密部分用 Python 版采集的黄金向量做了逐字节校验 —— 协议是抄的，移植是自己写的。
