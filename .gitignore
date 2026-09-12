@@ -5,6 +5,10 @@ logs/*.log
 # 个人配置(里面是学号和密码)，不要提交
 config.toml
 config.ini
+
+# manage.py(python 分支)记录的 python 解释器路径，因机器而异。
+# 本分支不使用该文件，但它存在于工作区，列上以免 git add -A 时被误提交。
+python-path.txt
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
