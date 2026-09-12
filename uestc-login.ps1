@@ -4,7 +4,9 @@
 
 .DESCRIPTION
     深澜(srun)认证协议的完整实现：取 IP -> 取 token -> XXTEA 加密 -> HMAC-MD5 -> SHA1 校验和 -> 登录。
-    加密部分逐字节对齐 BitSrunLogin/encryption/ 里的 Python 参考实现，可用 -SelfTest 自检。
+
+    加密部分的正确性通过与参考实现（python 分支）比对的黄金向量验证。
+    执行 -SelfTest 可在不联网的情况下完成校验，详见 Invoke-SelfTest 的注释。
 
 .PARAMETER Once
     登录一次就退出（默认）。用于验证配置是否正确。
@@ -56,11 +58,28 @@ $script:TestKey = 'abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456
 $script:TestMsg = '{"username":"1234567890@dx","password":"pw","ip":"10.0.0.1","acid":"3","enc_ver":"srun_bx1"}'
 
 # ---------------------------------------------------------------------------
-# 加密 —— 移植自 BitSrunLogin/encryption/
+# 加密
+#
+# 深澜认证需要四种算法，缺一不可，且必须与认证服务器端的实现逐字节一致：
+#   Get-SrunBase64       自定义字母表的 base64
+#   ConvertTo-SrunWords  XXTEA 的辅助函数：字节 -> 32 位字
+#   Get-XEncode          XXTEA 变体，加密 info 字符串
+#   Get-HmacMd5          HMAC-MD5，算密码摘要
+#   Get-Sha1             SHA1，算校验和
+#
+# 这些函数都不访问网络，可直接用 -SelfTest 校验。
 # ---------------------------------------------------------------------------
 
 function Get-SrunBase64 {
-    <#  对应 srun_base64.get_base64：用自定义字母表的 base64  #>
+    <#
+      自定义字母表的 base64 编码。
+
+      与标准 base64 的唯一区别是字母表：深澜使用
+        LVoJPiCN2R8G90yg+hmFHuacZ1OWMnrsSTXkYpUq/3dlbfKwv6xztjI7DeBE45QA
+      而非标准的 A-Za-z0-9+/。其余（每 3 字节编为 4 字符、不足补 '='）与标准一致。
+
+      例：编码 "132456" 得 "9F9x0JHI"，标准 base64 则为 "MTMyNDU2"。
+    #>
     param([byte[]]$Bytes)
 
     if ($null -eq $Bytes -or $Bytes.Length -eq 0) { return '' }
@@ -96,7 +115,13 @@ function Get-SrunBase64 {
 }
 
 function ConvertTo-SrunWords {
-    <#  对应 srun_xencode.sencode：4 字节小端打包成 32 位字，可选追加原始长度  #>
+    <#
+      XXTEA 的输入转换：把字节数组按 4 字节一组、小端序打包成 32 位字。
+
+      $AppendLength 为 $true 时，在末尾追加一个「原始字节长度」的字。
+      XXTEA 对待加密的消息要求追加长度（防止尾部填充被截断攻击），
+      对密钥则不加，因此两个调用点的取值不同。
+    #>
     param(
         [byte[]]$Bytes,
         [bool]$AppendLength
@@ -120,10 +145,16 @@ function ConvertTo-SrunWords {
 
 function Get-XEncode {
     <#
-      对应 srun_xencode.get_xencode：XXTEA 变体，返回字节数组。
+      XXTEA 变体加密，返回字节数组。深澜把它用作 info 字符串的加密算法。
 
-      PS 5.1 关键点：全程用 [int64] 并在每步用 -band $script:MASK32 收敛回 32 位无符号范围。
-      PowerShell 默认 Int32 会溢出，且 -shr 对负数做算术右移会补符号位，都会导致结果错误。
+      轮数由消息长度决定，为 6 + 52/(n+1) 向下取整，其中 n 是 32 位字的个数。
+
+      PS 5.1 关键点：全程使用 [int64]，并在每一步用 -band $script:MASK32 收敛回
+      32 位无符号范围。原因是 PowerShell 默认按 Int32 运算会溢出，而 -shr 对负数
+      做算术右移会补符号位；两者都会让结果与参考实现不一致。$script:MASK32 必须写成
+      0xFFFFFFFFL，原因见该常量的注释。
+
+      返回的是加密后的字节；调用方还需再做一次自定义 base64，并加上 "{SRBX1}" 前缀。
     #>
     param(
         [string]$Message,
@@ -170,7 +201,7 @@ function Get-XEncode {
         $q = $q - 1
     }
 
-    # 对应 lencode(pwd, key=False)：每个字拆成 4 个小端字节
+    # ConvertTo-SrunWords 的逆操作：每个 32 位字拆回 4 个小端字节
     $out = New-Object 'System.Collections.Generic.List[byte]'
     foreach ($w in $pwd) {
         $out.Add([byte]($w -band 0xFF))
@@ -182,7 +213,12 @@ function Get-XEncode {
 }
 
 function Get-HmacMd5 {
-    <#  对应 srun_md5.get_md5：HMAC-MD5，key=token，message=password（不是普通 MD5！）  #>
+    <#
+      计算密码字段的摘要：HMAC-MD5，key 为 challenge token，message 为密码明文。
+
+      注意这是 HMAC 而不是普通 MD5。这一点容易搞错：certutil 等工具只能算普通
+      哈希，算不出这个值。返回 32 位小写十六进制字符串。
+    #>
     param(
         [string]$Key,
         [string]$Message
@@ -199,7 +235,12 @@ function Get-HmacMd5 {
 }
 
 function Get-Sha1 {
-    <#  对应 srun_sha1.get_sha1  #>
+    <#
+      计算校验和用的 SHA1，返回 40 位小写十六进制字符串。
+
+      调用方（Invoke-SrunLogin）按固定顺序把 token 与各字段依次拼接后再传入，
+      顺序错则该值不匹配，认证服务器会直接拒绝。
+    #>
     param([string]$Value)
 
     $sha = [System.Security.Cryptography.SHA1]::Create()
@@ -294,7 +335,11 @@ function Invoke-HttpGet {
 }
 
 # ---------------------------------------------------------------------------
-# 登录流程 —— 移植自 BitSrunLogin/LoginManager.py
+# 登录流程
+#
+# 按深澜认证协议依次完成：取本机 IP -> 取 challenge token -> 拼 info ->
+# 加密 -> 算校验和 -> 提交。各步骤的取值都会经 [uri]::EscapeDataString() 编码，
+# 因为 info 含 '{}'、base64 含 '+/='，不编码会导致请求被截断。
 # ---------------------------------------------------------------------------
 
 function Get-LoginIp {
@@ -427,7 +472,11 @@ function Invoke-SrunLogin {
 }
 
 # ---------------------------------------------------------------------------
-# 守护循环 —— 对应 always_online.py
+# 守护循环
+#
+# 周期性探测连通性，连续失败达阈值即重新登录。探测失败时会缩短间隔以便尽快
+# 恢复，但有下限；一旦发起过登录尝试就立即复位，避免在探测点本身不可达时
+# 形成高频重试。
 # ---------------------------------------------------------------------------
 
 function Write-UestcLog {
@@ -504,7 +553,13 @@ function Start-Monitor {
 # ---------------------------------------------------------------------------
 
 function Invoke-SelfTest {
-    <#  用 Python 参考实现采集的黄金向量校验加密移植是否逐字节一致  #>
+    <#
+      加密自检：用一组固定输入（黄金向量）校验各加密函数的输出。
+
+      向量的期望值取自 Python 参考实现的实际输出，比对为逐字节相等。这些值
+      只要有一个不符，登录就必然失败，因此自检不通过时不必再尝试联网。
+      本函数不访问网络。
+    #>
 
     $fail = 0
 
@@ -536,7 +591,7 @@ function Invoke-SelfTest {
 
     Write-Host ''
     if ($script:__fail -eq 0) {
-        Write-Host '全部通过，加密移植与 Python 参考实现逐字节一致。' -ForegroundColor Green
+        Write-Host '全部通过：加密实现与参考实现的输出逐字节一致。' -ForegroundColor Green
         return $true
     }
     Write-Host "$($script:__fail) 项失败。" -ForegroundColor Red
