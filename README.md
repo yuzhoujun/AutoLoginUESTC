@@ -1,45 +1,81 @@
-# UESTC 电子科技大学网络认证脚本
+# UESTC 电子科技大学校园网认证
 
-自动登录校园网 / 寝室宽带，掉线自动重连。这个仓库提供**两个功能等价、可互换的实现**，
-分别放在两个分支上，挑一个用就行。
+本仓库实现电子科技大学校园网（深澜 srun 认证）的自动登录与掉线自动重连，适用于
+校园网有线接入及电信 / 移动寝室宽带的有线接入场景。
 
-| 分支 | 实现 | 需要装什么 | 说明 |
+仓库提供**两个功能等价、可互换的实现**，分别位于 `python` 与 `powershell` 分支。
+两个分支使用同一套认证协议，配置项语义、日志格式、重连行为一致，可按需选用其一。
+
+`main` 分支（本页）仅包含项目说明与许可证，不包含代码。
+
+---
+
+## 一、分支说明
+
+| 分支 | 实现 | 运行环境 | 适用场景 |
 | --- | --- | --- | --- |
-| [`python`](../../tree/python) | Python | Python 3.11+ 和 `requests` | 最早写的版本，跨平台，也方便自己改协议 |
-| [`powershell`](../../tree/powershell) | Windows PowerShell 5.1 | **什么都不用装** | 把 Python 版原样移植过来的，Windows 上用这个最省事 |
+| [`python`](../../tree/python) | Python | Python 3.11+、`requests` | 跨平台；便于阅读与修改协议实现 |
+| [`powershell`](../../tree/powershell) | Windows PowerShell 5.1 | Windows 10 / 11（自带，无需安装） | Windows 环境下的零依赖部署 |
 
-两个分支都实现了同一套深澜（srun）认证协议，配置项、日志、掉线重连的行为一致。
-`main`（就是本页）只放这份总说明，不放代码。
+### 如何选择
 
----
+- **Windows 环境、希望尽快部署** → 使用 `powershell` 分支。无需安装 Python 或任何
+  第三方组件，双击批处理文件即可运行，并可直接注册为开机自启的计划任务或服务。
+- **需要跨平台，或使用 Linux / macOS / 路由器** → 使用 `python` 分支。
+- **需要阅读或修改协议实现** → 两个分支均可。`python` 分支将加密算法与登录流程分
+  目录组织，结构更便于对照；`powershell` 分支为同一协议的独立实现。
 
-## 我该选哪个？
+### 实测环境
 
-- **只想赶紧用上** → `powershell` 分支。Windows 10 / 11 自带的 PowerShell 就够，
-  双击一个 `.bat` 就能跑，不用配环境、不用装依赖。
-- **装了 Python，或者想跑在 Linux / macOS / 路由器上** → `python` 分支。
-- **想读协议实现** → 两个都行。`python` 分支更好读（`BitSrunLogin/` 里
-  加密和登录流程分得很清楚），`powershell` 分支是它的逐行对照移植。
-
----
-
-## 搞这干啥？
-
-- 学校的电信宽带自动掉线太频繁了，移动的稍好一点但也不行（尊贵的移动还屏蔽了游戏串流软件，真是谢谢你）
-- 校园网很稳定，很少掉线。但是如果再出现封在家里一个月没法回学校的情况，那就得想办法让电脑一直在线了，不然没法给老板打工。
-
-支持登录以下类型的网络（我都试过的）：
+以下结果于 **2026-09-13** 在电子科技大学宿舍网环境实测：
 
 ```text
-- 校园网有线接入 + 学号认证（主楼，至今可用）
-- 移动、电信寝室宽带有线接入 + 学号认证（硕丰 6、7、8 组团那种插网线直接弹出认证页面的，至今可用）
+- 校园网有线接入 + 学号认证（主楼）
+- 移动 / 电信寝室宽带有线接入 + 学号认证（硕丰 6、7、8 组团等插网线弹出认证页面的场景）
 ```
+
+两个分支在该环境下均登录成功。
 
 ---
 
-## 快速开始
+## 二、与参考仓库的关系
 
-### 用 `powershell` 分支（推荐，零依赖）
+两个分支与参考仓库
+[coffeehat/BIT-srun-login-script](https://github.com/coffeehat/BIT-srun-login-script)
+的关系**并不相同**，此处分别说明。
+
+### `python` 分支
+
+该分支的认证实现（`BitSrunLogin/` 目录）**复制自上述参考仓库**，并在此基础上做了
+修改与优化，主要包括：
+
+- 修复本机 IP 的解析逻辑：新版认证页将 IP 置于 JavaScript 的 `var CONFIG = {...}`
+  中，且登录页可能只是 `<meta http-equiv="refresh">` 跳转页，原实现在此情形下会
+  抛出 `AttributeError: 'NoneType' object has no attribute 'group'`。
+- 重写配置加载方式：由代码内硬编码配置改为读取独立的 `config.toml`，个人凭据不再
+  进入仓库。
+- 其余文件（`logger.py`、`autoConnectNetwork.bat`、配置文件模板等）为本项目新增。
+
+因包含参考仓库的代码，该分支**保留了上游作者的版权声明**，详见「六、声明」。
+
+### `powershell` 分支
+
+该分支的**实现依据是深澜认证协议本身**，即公开的认证流程：取本机 IP、取 challenge
+token、构造并加密 info、计算校验和、提交登录。
+
+除该协议流程外，该分支**未使用参考仓库的代码**。全部 PowerShell 代码为独立编写，
+函数划分、数据结构与错误处理均按 PowerShell 的惯例重新设计；参考仓库为 Python
+实现，其代码未经复制或翻译。
+
+该分支与参考实现之间唯一的直接关联是**验证方式**：为确保 XXTEA、HMAC-MD5、自定义
+字母表 Base64 等步骤的输出与既有实现一致，该分支采集了一组黄金向量，通过
+`-SelfTest` 做逐字节断言比对。这属于验证手段，不构成代码来源。
+
+---
+
+## 三、快速开始
+
+### 使用 `powershell` 分支
 
 ```powershell
 git clone -b powershell https://github.com/yuzhoujun/AutoLoginUESTC.git
@@ -47,13 +83,13 @@ cd AutoLoginUESTC
 copy config.example.ini config.ini
 ```
 
-编辑 `config.ini` 填上学号和密码，然后双击 `autoConnectNetwork.bat`。
-想开机自启、长期挂着，用管理员身份运行 `.\install-task.ps1`。
+编辑 `config.ini` 填写学号与密码，然后双击 `autoConnectNetwork.bat` 完成首次登录。
+如需开机自动运行，以管理员身份执行 `.\install-task.ps1`。
 
-完整说明（配置项、自启、常见问题、加密自检）见
+配置项说明、自启方案、常见问题与加密自检方法，见
 [`powershell` 分支的 README](../../tree/powershell#readme)。
 
-### 用 `python` 分支
+### 使用 `python` 分支
 
 ```bash
 git clone -b python https://github.com/yuzhoujun/AutoLoginUESTC.git
@@ -62,103 +98,81 @@ pip install requests
 cp config.example.toml config.toml
 ```
 
-编辑 `config.toml` 填上学号和密码，然后 `python login_once.py` 验证能不能登录，
-`python always_online.py` 挂着自动重连。
+编辑 `config.toml` 填写学号与密码，然后执行：
+
+```bash
+python login_once.py     # 登录一次，验证配置
+python always_online.py  # 常驻运行，掉线自动重连
+```
 
 完整说明见 [`python` 分支的 README](../../tree/python#readme)。
 
-> 就像 `main` 分支切换过去也行：
-> `git clone -b python <url>` 等价于 `git clone <url>` 之后 `git checkout python`。
-> 两个分支的代码和配置文件互不影响，可以同时 clone 两份。
+> 直接切换分支亦可：`git clone` 后执行 `git checkout python`（或 `powershell`）与
+> `git clone -b <分支>` 等价。两个分支的代码与配置文件互不影响，可分别检出。
 
 ---
 
-## 认证流程（两个分支都一样）
+## 四、认证流程
 
-学校用的是深澜（srun）那套认证。整个登录就六步：
+两个分支实现的是同一套流程，共六步：
 
 ```text
-1. 取本机 IP      GET {portal}/  → 页面里拿 ip
-2. 取 challenge   GET /cgi-bin/get_challenge  → token
-3. 拼 info        {"username":...,"password":...,"ip":...,"acid":...,"enc_ver":"srun_bx1"}
-4. 加密           info = "{SRBX1}" + 自定义字母表 Base64(XXTEA(info, token))
-                  password = "{MD5}" + HMAC-MD5(key=token, msg=password)
-5. 算校验和       SHA1 把 token 和上面各字段依次拼接后哈希
-6. 提交           GET /cgi-bin/srun_portal?action=login&...
+1. 取本机 IP      GET {portal}/                 从页面中解析 ip
+2. 取 token       GET /cgi-bin/get_challenge
+3. 拼接 info      {"username":...,"password":...,"ip":...,"acid":...,"enc_ver":"srun_bx1"}
+4. 加密           info     = "{SRBX1}" + 自定义字母表 Base64(XXTEA(info, token))
+                  password = "{MD5}"   + HMAC-MD5(key=token, msg=password)
+5. 计算校验和     SHA1 依次拼接 token 与上述各字段后哈希
+6. 提交登录       GET /cgi-bin/srun_portal?action=login&...
 ```
 
-几个容易踩的坑，两个分支都处理了：
+实现时需注意的三点，两个分支均已处理：
 
-- 密码**不是**普通 MD5，是 `HMAC-MD5`，key 是 token、message 是密码。用 `certutil` 算的不对。
-- Base64 用的是**自定义字母表**（`LVoJPiCN2R8G90yg+hmFHuacZ1OWMnrsSTXkYpUq/3dlbfKwv6xztjI7DeBE45QA`），
-  不是标准 Base64。
-- 认证页地址栏里的 `ip` 现在藏在 JS 的 `var CONFIG = {...}` 里，老页面才是隐藏 input；
-  而且登录页常常只是个 `<meta http-equiv="refresh">` 跳转页，得先跟着跳过去。
+1. **密码字段不是普通 MD5**，而是 `HMAC-MD5`，key 为 token、message 为密码明文。
+   `certutil` 等工具只能计算普通哈希，无法得到正确结果。
+2. **Base64 使用自定义字母表**
+   （`LVoJPiCN2R8G90yg+hmFHuacZ1OWMnrsSTXkYpUq/3dlbfKwv6xztjI7DeBE45QA`），并非标准
+   Base64。例如编码 `132456` 得 `9F9x0JHI`，标准 Base64 则为 `MTMyNDU2`。
+3. **本机 IP 的获取方式已变更**：新版认证页将其置于 JavaScript 的 `var CONFIG = {...}`
+   中，旧版页面才是隐藏 input；且登录页常为 `<meta http-equiv="refresh">` 跳转页，
+   需先跟随跳转到达真实认证页 —— `requests` 与 `Invoke-WebRequest` 均不会自动跟随。
 
 ---
 
-## 关于配置文件（重要）
+## 五、配置文件
 
-两个分支都用**独立的一份个人配置文件**装学号和密码：
+两个分支各自使用一份独立的个人配置文件存放学号与密码：
 
-| 分支 | 文件 | 模板 |
+| 分支 | 个人配置（不提交） | 模板（提交） |
 | --- | --- | --- |
 | `python` | `config.toml` | `config.example.toml` |
 | `powershell` | `config.ini` | `config.example.ini` |
 
-这两个个人配置文件**已经被 `.gitignore` 忽略**，不会进仓库，所以可以放心写真实密码。
-提交代码前建议顺手 `git status` 确认一下它没被带上。
+两份个人配置文件均已在 `.gitignore` 中忽略，不会进入仓库，可填写真实密码。提交前建议
+执行 `git status` 确认其未被纳入暂存区。
 
 ---
 
-## 目录 / 分支结构
+## 六、声明
 
-```text
-main 分支（本页）
-├── README.md    # 你正在看的这份总说明
-└── LICENSE      # MIT
+### 许可
 
-python 分支
-├── config.example.toml
-├── config.py            # 读 config.toml 的加载器
-├── login_once.py        # 登录一次
-├── always_online.py     # 常驻，掉线重连
-├── logger.py
-├── autoConnectNetwork.bat
-└── BitSrunLogin/        # 深澜认证协议实现（加密 + 登录流程）
+本项目采用 [MIT 许可证](LICENSE)。
 
-powershell 分支
-├── config.example.ini
-├── uestc-login.ps1      # 核心：读配置 + 加密 + 登录 + 守护循环
-├── autoConnectNetwork.bat
-├── install-task.ps1     # 注册计划任务（推荐）
-├── install-service.ps1  # 注册 Windows 服务（需 nssm/WinSW）
-└── uninstall.ps1
-```
+`python` 分支包含来自
+[coffeehat/BIT-srun-login-script](https://github.com/coffeehat/BIT-srun-login-script)
+的代码，因此 `LICENSE` 中保留了上游作者的版权声明
+（`Copyright (c) 2020 coffeehat`）。这是 MIT 许可证的要求，请勿删除。其后一行是本
+项目对自身修改部分的声明。
 
----
-
-## 许可
-
-[MIT](LICENSE)。
-
-本项目的登录流程实现衍生自 [coffeehat/BIT-srun-login-script](https://github.com/coffeehat/BIT-srun-login-script)，
-因此 `LICENSE` 里**保留了上游作者的版权声明**（`Copyright (c) 2020 coffeehat`），
-这是 MIT 协议的要求，请不要删掉。后面那行是我自己改动部分的声明。
-
----
-
-## 参考与致谢
+### 参考
 
 - [coffeehat/BIT-srun-login-script](https://github.com/coffeehat/BIT-srun-login-script)
-  —— 最初的登录流程就是从这儿抄的。楼主入学的时候深澜的认证页面已经经过混淆了，
-  全靠这个仓库才把流程理清楚。它里面还有支持 OpenWrt 的 go 版本。
-- 好多学校都是这套登录逻辑，所以 GitHub 上同类脚本很多，遇到问题可以多搜几个对照着看。
+  —— 深澜认证流程的公开实现，本项目的协议依据。该仓库另提供支持 OpenWrt 的 Go 版本。
+- 深澜认证被多所高校采用，GitHub 上存在较多同类实现，遇到问题时可供对照参考。
 
----
+### 免责声明
 
-## 免责声明
-
-仅供个人学习和自用。请只在自己的账号上使用，不要拿去批量登录别人的账号或者做任何
-未经授权的事。账号密码只保存在本地那份被 gitignore 的配置文件里，不会上传到任何地方；
-但如果你自己不小心把它提交上去了，那是你的责任 —— 提交前记得 `git status` 看一眼。
+本项目仅供个人学习与自用。请仅在自己的账号上使用，不得用于批量登录他人账号或任何
+未经授权的用途。账号密码仅保存在本地被 gitignore 忽略的配置文件中，不会上传至任何
+服务器；但若因手动提交导致泄露，责任由使用者自负，提交前请确认 `git status` 的输出。
