@@ -3,7 +3,10 @@ logs/*.log
 */__pycache__/
 
 # 个人配置(里面是学号和密码)，不要提交
+# config.toml 是本分支用的；config.ini 是 powershell 分支用的。
+# 两个都列上，避免切换分支时其中一个漏网被提交。
 config.toml
+config.ini
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

@@ -18,6 +18,19 @@ header = {
 
 
 class LoginManager:
+    """
+    深澜(srun)认证的登录流程。
+
+    对外只需要用到 login()。整个流程分三步，由三个 get_* 方法依次调用：
+
+        login()               传入学号与密码，串起下面三步
+         ├─ get_ip()          取本机在 srun 侧看到的 IP
+         ├─ get_token()       取 challenge token
+         └─ get_login_responce()  构造并加密登录信息，提交，解析结果
+
+    各步骤的细节由对应的 _ 前缀私有方法完成。构造函数的 kwargs 会被合并进
+    self.args，因此 url / ac_id / domain 等参数都可以从外部覆盖（见 config.py）。
+    """
 
     @staticmethod
     def encode(s):
