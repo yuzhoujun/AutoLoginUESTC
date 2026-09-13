@@ -1,0 +1,10 @@
+{
+  // LICENSE 没有扩展名，VS Code 会自动把它识别为 Markdown，
+  // 于是被 markdownlint 按 Markdown 规则检查并报 MD041
+  //（“首行应为一级标题”）。LICENSE 是 MIT 许可证原文，首行必须保持
+  // “MIT License”，不能加 # 标题，因此显式声明该文件为纯文本。
+  "files.associations": {
+    "LICENSE": "plaintext",
+    "**/LICENSE": "plaintext"
+  }
+}
