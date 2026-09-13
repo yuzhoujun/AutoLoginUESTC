@@ -9,8 +9,7 @@ logs/*.log
 # 切换分支后工作区里会残留其他分支的文件，下面这些规则确保 git add -A 不会
 # 把它们误提交到本分支（main 的跟踪文件只有 .gitignore / LICENSE / README.md）。
 BitSrunLogin/
-login_once.py
-always_online.py
+autostart/
 config.py
 logger.py
 manage.py

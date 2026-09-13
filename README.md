@@ -14,38 +14,48 @@
 
 | 分支 | 实现 | 运行环境 | 适用场景 |
 | --- | --- | --- | --- |
-| [`python`](../../tree/python) | Python | Python 3.11+、`requests` | 跨平台；便于阅读与修改协议实现 |
+| [`python`](../../tree/python) | Python | Python 3.11+，无第三方依赖；Windows / Linux | 跨平台；便于阅读与修改协议实现 |
 | [`powershell`](../../tree/powershell) | Windows PowerShell 5.1 | Windows 10 / 11（自带，无需安装） | Windows 环境下的零依赖部署 |
 
 ### 如何选择
 
-- **Windows 环境、希望尽快部署** → 使用 `powershell` 分支。无需安装 Python 或任何
-  第三方组件，双击批处理文件即可运行。
-- **需要跨平台，或使用 Linux / macOS / 路由器** → 使用 `python` 分支。
+- **Windows 环境、希望尽快部署** → 两个分支均可。`powershell` 分支无需安装 Python；
+  `python` 分支需要 Python 3.11 及以上，但同样不需要安装任何第三方包。
+- **需要 Linux** → 使用 `python` 分支。认证、常驻运行与开机自启（systemd）均已支持。
 - **需要阅读或修改协议实现** → 两个分支均可。`python` 分支将加密算法与登录流程分
   目录组织，结构更便于对照；`powershell` 分支为同一协议的独立实现。
 
-两个分支**都支持注册为开机自启的后台进程**，均提供计划任务与 Windows 服务两种
-方式，并且都以计划任务为推荐方案（零依赖）：
+两个分支**都支持注册为开机自启的后台进程**：
 
-| 分支 | 计划任务 | Windows 服务 | 管理入口 |
-| --- | --- | --- | --- |
-| `python` | `python manage.py install` | `python manage.py install-service` | `autoConnectNetwork.bat` 菜单 |
-| `powershell` | `.\install-task.ps1` | `.\install-service.ps1` | `autoConnectNetwork.bat` |
+| 分支 | Windows 计划任务 | Windows 服务 | Linux systemd | 管理入口 |
+| --- | --- | --- | --- | --- |
+| `python` | `python manage.py --install` | `python manage.py --install-service` | `sudo python manage.py --install` | `python manage.py` 交互菜单 |
+| `powershell` | `.\install-task.ps1` | `.\install-service.ps1` | 不支持 | 双击 `autoConnectNetwork.bat` |
 
-两个分支的常驻脚本均为**前台进程**，关闭终端窗口即结束，因此只适合测试；长期无人
+两者都以 Windows 计划任务为推荐方案（零依赖）。`python` 分支的命令行与交互菜单
+均由 `manage.py` 提供，其 Windows 服务方式需要自行准备 nssm 或 WinSW 包装器，
+与 `powershell` 分支的处理一致；Linux 上则使用 systemd，因此不需要批处理文件。
+
+两个分支常驻运行时均为**前台进程**，关闭终端窗口即结束，因此只适合测试；长期无人
 值守需要执行上面的注册命令。
 
 ### 实测环境
 
-以下结果于 **2026-09-13** 在电子科技大学宿舍网环境实测：
+以下接入方式于 **2026-09-13** 在电子科技大学宿舍网环境实测：
 
 ```text
 - 校园网有线接入 + 学号认证（主楼）
 - 移动 / 电信寝室宽带有线接入 + 学号认证（硕丰 6、7、8 组团等插网线弹出认证页面的场景）
 ```
 
-两个分支在该环境下均登录成功。
+`powershell` 分支在上述环境下登录成功。`python` 分支面向相同的接入场景，但其实测
+状态见下方说明。
+
+> **`python` 分支的验证状态**：该分支的 HTTP 请求层近期由 `requests` 改为标准库
+> `urllib`，目的是去掉唯一的第三方依赖。加密实现未受影响（有黄金向量逐字节比对），
+> 但在新的请求层下**真实登录尚未重新实测**；自检、在线状态探测、重连逻辑、自启
+> 注册与状态查询均已复验。首次使用建议先执行 `python manage.py --login` 确认。
+> 详见该分支 README 的「四、验证」。
 
 ---
 
@@ -57,18 +67,23 @@
 
 ### `python` 分支
 
-该分支的认证实现（`BitSrunLogin/` 目录）与常驻脚本（`always_online.py`）**来源于上述
-参考仓库**，并在此基础上做了修改与扩展，主要包括：
+该分支的认证实现（`BitSrunLogin/` 目录）与常驻循环（`manage.py` 中的
+`always_login()`，对应参考仓库的 `always_online.py`）**来源于上述参考仓库**，并在此
+基础上做了修改与扩展，主要包括：
 
 - 修复本机 IP 的解析逻辑：新版认证页将 IP 置于 JavaScript 的 `var CONFIG = {...}`
   中，且登录页可能只是 `<meta http-equiv="refresh">` 跳转页，原实现在此情形下会
   抛出 `AttributeError: 'NoneType' object has no attribute 'group'`。
 - 重写配置加载方式：由代码内硬编码配置改为读取独立的 `config.toml`，个人凭据不再
   进入仓库。
-- 重写常驻脚本：接入 `config.toml` 与日志模块，增加连续失败判定与探测间隔节流，
-  `ping` 参数按操作系统选择（参考实现固定使用 Linux 语法的 `-c`）。
-- 其余文件（`logger.py`、`config.py`、`manage.py`、`selftest.py`、
-  `autoConnectNetwork.bat`、配置文件模板等）为本项目新增。
+- 重写常驻循环：接入 `config.toml` 与日志模块，增加连续失败判定与探测间隔节流，
+  并为该间隔补上下限（参考实现没有衰减，本项目早期版本衰减到 0 后曾退化为每秒一次
+  的登录请求）。
+- 在线探测由 `ping` 某个公共地址改为向认证服务器查询本机认证状态
+  （`/cgi-bin/rad_user_info`），不再依赖 ICMP，也不再需要配置探测点。
+- HTTP 请求改用标准库 `urllib`，去掉 `requests` 依赖。
+- 其余文件（`logger.py`、`config.py`、`manage.py`、`selftest.py`、`autostart/`
+  目录、配置文件模板等）为本项目新增。
 
 因包含参考仓库的代码，该分支**保留了上游作者的版权声明**，详见「六、声明」。
 
@@ -108,28 +123,36 @@ copy config.example.ini config.ini
 ```bash
 git clone -b python https://github.com/yuzhoujun/AutoLoginUESTC.git
 cd AutoLoginUESTC
-pip install requests
-cp config.example.toml config.toml
+cp config.example.toml config.toml      # Windows 上为 copy
 ```
 
-编辑 `config.toml` 填写学号与密码，然后执行：
+只需要 Python 3.11 及以上，无需安装任何第三方包。编辑 `config.toml` 填写学号与密码，
+然后执行：
 
 ```bash
-python selftest.py       # 加密实现自检（不联网）
-python login_once.py     # 登录一次，验证配置
-python always_online.py  # 前台常驻运行，掉线自动重连（关掉终端即停）
+python manage.py --self-test   # 加密实现自检（不联网）
+python manage.py --login       # 登录一次，验证配置
+python manage.py --daemon      # 前台常驻运行，掉线自动重连（关掉终端即停）
 ```
 
-确认无误后注册开机自启（需管理员权限）：
+确认无误后注册开机自启。Windows（需管理员权限）：
 
 ```bash
-python manage.py install   # 注册计划任务
-python manage.py status    # 查看状态
-python manage.py uninstall # 注销
+python manage.py --install     # 注册计划任务
+python manage.py --status      # 查看状态
+python manage.py --uninstall   # 注销
 ```
 
-也可以直接双击 `autoConnectNetwork.bat`，通过交互菜单完成上述操作。完整说明见
-[`python` 分支的 README](../../tree/python#readme)。
+Linux（需 root）：
+
+```bash
+sudo python manage.py --install    # 注册系统级 systemd unit
+python manage.py --status
+sudo python manage.py --uninstall
+```
+
+不带参数执行 `python manage.py` 会进入交互菜单，上述操作均可通过菜单完成。完整
+说明见 [`python` 分支的 README](../../tree/python#readme)。
 
 > 直接切换分支亦可：`git clone` 后执行 `git checkout python`（或 `powershell`）与
 > `git clone -b <分支>` 等价。两个分支的代码与配置文件互不影响，可分别检出。
@@ -159,7 +182,7 @@ python manage.py uninstall # 注销
    Base64。例如编码 `132456` 得 `9F9x0JHI`，标准 Base64 则为 `MTMyNDU2`。
 3. **本机 IP 的获取方式已变更**：新版认证页将其置于 JavaScript 的 `var CONFIG = {...}`
    中，旧版页面才是隐藏 input；且登录页常为 `<meta http-equiv="refresh">` 跳转页，
-   需先跟随跳转到达真实认证页 —— `requests` 与 `Invoke-WebRequest` 均不会自动跟随。
+   需先跟随跳转到达真实认证页 —— `urllib` 与 `Invoke-WebRequest` 均不会自动跟随。
 
 ---
 
