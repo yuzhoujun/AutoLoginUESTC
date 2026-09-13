@@ -375,7 +375,7 @@ AutoLoginUESTC/
 本项目采用 [MIT 许可证](LICENSE)。登录流程的实现参考了
 [coffeehat/BIT-srun-login-script](https://github.com/coffeehat/BIT-srun-login-script)，
 因此 `LICENSE` 中保留了上游作者的版权声明（`Copyright (c) 2020 coffeehat`）。
-这是 MIT 许可证的要求，请勿删除。
+这是 MIT 许可证的要求，请勿删除。其后一行是本项目的版权声明。
 
 ### 参考
 
