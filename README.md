@@ -550,7 +550,7 @@ ping -n 3 223.5.5.5
 本分支的认证实现（`BitSrunLogin/`）与常驻脚本（`always_online.py`）来源于
 [coffeehat/BIT-srun-login-script](https://github.com/coffeehat/BIT-srun-login-script)，
 因此 `LICENSE` 中保留了上游作者的版权声明（`Copyright (c) 2020 coffeehat`）。
-这是 MIT 许可证的要求，请勿删除。其后一行是本项目对自身修改部分的声明。
+这是 MIT 许可证的要求，请勿删除。其后一行是本项目的版权声明。
 
 ### 参考
 
